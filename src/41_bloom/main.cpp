@@ -30,14 +30,14 @@ const unsigned int SCR_HEIGHT = 600;
 
 Camera camera(glm::vec3(0.0f, 0.0f, 5.0f));
 
-float deltaTime = 0.0f; // ��ǰ֡����һ֮֡���ʱ���
-float lastTime = 0.0f;	// ��һ֡��ʱ��
+float deltaTime = 0.0f; // 当前帧与上一帧之间的时间差
+float lastTime = 0.0f;	// 上一帧的时间
 
-float lastX = SCR_WIDTH / 2.0f; // �����һ֡��λ��
+float lastX = SCR_WIDTH / 2.0f; // 鼠标上一帧的位置
 float lastY = SCR_HEIGHT / 2.0f;
 bool firstMouse = true;
 
-// bloom ����
+// bloom 设置
 bool bloomKeyPressed = false;
 bool bloom = true;
 float exposure = 1.0;
@@ -45,10 +45,10 @@ float exposure = 1.0;
 int main()
 {
 
-	// ��ʼ��GLFW
+	// 初始化GLFW
 	glfwInit();
 
-	// ����GLFW
+	// 配置GLFW
 	// --------
 	const char *glsl_version = "#version 330";
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
@@ -59,18 +59,18 @@ int main()
 	glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
 #endif
 
-	// ����GLFW���ڶ���
+	// 创建GLFW窗口对象
 	// ----------------
 	GLFWwindow *window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "OpenGL", NULL, NULL);
 
 	if (window == NULL)
 	{
-		cout << "��ʼ��glfw����ʧ��!" << endl;
+		cout << "初始化glfw窗口失败!" << endl;
 		glfwTerminate();
 		return -1;
 	}
 
-	// ע�ⴰ�ڼ���
+	// 注测窗口监听
 	// ------------
 	glfwMakeContextCurrent(window);
 	glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
@@ -78,29 +78,29 @@ int main()
 	glfwSetScrollCallback(window, scroll_callback);
 	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
-	// ��ʼ��GLAD
+	// 初始化GLAD
 	// ----------
 	if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
 	{
-		cout << "��ʼ��GLADʧ��!" << endl;
+		cout << "初始化GLAD失败!" << endl;
 		return -1;
 	}
 
-	// ��Ȳ���
+	// 深度测试
 	// --------
 	glEnable(GL_DEPTH_TEST);
 
-	// ����gammaУ��
+	// 启用gamma校正
 	//glEnable(GL_FRAMEBUFFER_SRGB);
 
-	// ����shader
+	// 编译shader
 	// ----------
 	Shader shader("./src/41_bloom/shader/bloom_vert.glsl", "./src/41_bloom/shader/bloom_frag.glsl");
 	Shader shaderLight("./src/41_bloom/shader/bloom_light_vert.glsl", "./src/41_bloom/shader/bloom_light_frag.glsl");
 	Shader shaderBlur("./src/41_bloom/shader/bloom_blur_vert.glsl", "./src/41_bloom/shader/bloom_blur_frag.glsl");
 	Shader shaderFinal("./src/41_bloom/shader/bloom_final_vert.glsl", "./src/41_bloom/shader/bloom_final_frag.glsl");
 
-	// ����imgui������
+	// 创建imgui上下文
 	// ---------------
 	ImGui::CreateContext();
 	ImGuiIO &io = ImGui::GetIO();
@@ -109,18 +109,18 @@ int main()
 	ImGui_ImplGlfw_InitForOpenGL(window, true);
 	ImGui_ImplOpenGL3_Init(glsl_version);
 
-	// ������ͼ
+	// 加载贴图
 	// --------
 	unsigned int woodMap = loadTexture("./static/texture/wood.png", true);
 	unsigned int containerMap = loadTexture("./static/texture/container2.png", true);
 
-	// ���ø���֡������
+	// 配置浮点帧缓冲区
 	// ----------------
 	unsigned int hdrFBO;
 	glGenFramebuffers(1, &hdrFBO);
 	glBindFramebuffer(GL_FRAMEBUFFER, hdrFBO);
 
-	// ��������������ɫ��������һ������������Ⱦ��һ������������ֵ��ȡ
+	// 创建两个浮点颜色缓冲区，一个用于正常渲染，一个用于亮度阈值读取
 	unsigned int colorBuffers[2];
 	glGenTextures(2, colorBuffers);
 	for (unsigned int i = 0; i < 2; i++)
@@ -128,28 +128,28 @@ int main()
 		glBindTexture(GL_TEXTURE_2D, colorBuffers[i]);
 		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, SCR_WIDTH, SCR_HEIGHT, 0, GL_RGBA, GL_FLOAT, NULL);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-		// ��Ϊģ���˾�������ظ�������ֵ
+		// 因为模糊滤镜会采样重复的纹理值
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-		// ���������ӵ�֡����
+		// 将纹理添加到帧缓冲
 		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + i, GL_TEXTURE_2D, colorBuffers[i], 0);
 	}
 
-	// ���������ӵ���Ȼ�����
+	// 创建并附加到深度缓冲区
 	unsigned int rboDepth;
 	glGenRenderbuffers(1, &rboDepth);
 	glBindRenderbuffer(GL_RENDERBUFFER, rboDepth);
 	glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, SCR_WIDTH, SCR_HEIGHT);
 	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, rboDepth);
-	// ����OpenGL���ǽ�ʹ�ô�֡����������Щ��ɫ����������Ⱦ
+	// 告诉OpenGL我们将使用此帧缓冲区的哪些颜色附件进行渲染
 	unsigned int attachments[2] = {GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1};
 	glDrawBuffers(2, attachments);
-	// ���framebuffer �Ƿ����ɹ�
+	// 检查framebuffer 是否编译成功
 	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
 		cout << "Framebuffer not complete!" << endl;
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
-	// ����ģ����framebuffer
+	// 用于模糊的framebuffer
 	unsigned int pingpongFBO[2];
 	unsigned int pingpongColorbuffers[2];
 	glGenFramebuffers(2, pingpongFBO);
@@ -165,7 +165,7 @@ int main()
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, pingpongColorbuffers[i], 0);
 
-		// ���framebuffer �Ƿ����ɹ�
+		// 检查framebuffer 是否编译成功
 		if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
 			cout << "Framebuffer not complete!" << endl;
 	}
@@ -185,7 +185,7 @@ int main()
 	lightColors.push_back(glm::vec3(0.0f, 0.0f, 15.0f));
 	lightColors.push_back(glm::vec3(0.0f, 5.0f, 0.0f));
 
-	// shader ������Ϣ
+	// shader 配置信息
 	// ---------------
 	shader.use();
 	shader.setInt("diffuseTexture", 0);
@@ -197,7 +197,7 @@ int main()
 	shaderFinal.setInt("scene", 0);
 	shaderFinal.setInt("bloomBlur", 1);
 
-	// ��Ⱦѭ��
+	// 渲染循环
 	// --------
 	while (!glfwWindowShouldClose(window))
 	{
@@ -224,7 +224,7 @@ int main()
 		glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-		// 1. ��������Ⱦ������֡������
+		// 1. 将场景渲染到浮点帧缓冲区
 		// ---------------------------
 		glBindFramebuffer(GL_FRAMEBUFFER, hdrFBO);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -238,21 +238,21 @@ int main()
 		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_2D, woodMap);
 
-		// ���õƹ����ֵ
+		// 设置灯光参数值
 		for (unsigned int i = 0; i < lightPositions.size(); i++)
 		{
 			shader.setVec3("lights[" + to_string(i) + "].Position", lightPositions[i]);
 			shader.setVec3("lights[" + to_string(i) + "].Color", lightColors[i]);
 		}
 		shader.setVec3("viewPos", camera.Position);
-		// ����һ�������������Ϊ�ذ�
+		// 创建一个大的立方体作为地板
 		model = glm::mat4(1.0f);
 		model = glm::translate(model, glm::vec3(0.0f, -1.0f, 0.0f));
 		model = glm::scale(model, glm::vec3(12.5f, 0.5f, 12.5f));
 		shader.setMat4("model", model);
 		renderCube();
 
-		// ���������������Ϊ����
+		// 创建多个立方体作为物体
 		glBindTexture(GL_TEXTURE_2D, containerMap);
 		model = glm::mat4(1.0f);
 		model = glm::translate(model, glm::vec3(0.0f, 1.0f, 0.0f));
@@ -291,7 +291,7 @@ int main()
 		shader.setMat4("model", model);
 		renderCube();
 
-		// ������й�Դ��ʾΪ������������
+		// 最后将所有光源显示为明亮的立方体
 		shaderLight.use();
 		shaderLight.setMat4("projection", projection);
 		shaderLight.setMat4("view", view);
@@ -306,7 +306,7 @@ int main()
 		}
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
-		// 2. ͨ�����θ�˹ģ����ģ��������ƬԪ
+		// 2. 通过两次高斯模糊来模糊明亮的片元
 		// -----------------------------------
 		bool horizontal = true, first_iteration = true;
 		unsigned int amount = 10;
@@ -315,7 +315,7 @@ int main()
 		{
 			glBindFramebuffer(GL_FRAMEBUFFER, pingpongFBO[horizontal]);
 			shaderBlur.setInt("horizontal", horizontal);
-			// ������������������ǵ�һ�ε���������
+			// 绑定其他缓冲区，如果是第一次迭代的纹理
 			glBindTexture(GL_TEXTURE_2D, first_iteration ? colorBuffers[1] : pingpongColorbuffers[!horizontal]);
 			renderQuad();
 			horizontal = !horizontal;
@@ -326,7 +326,7 @@ int main()
 		}
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
-		// 3. ���ڽ�������ɫ��������ȾΪ2d�ı��Σ�����ɫ��ӳ��HDR��ɫ��ȾΪĬ��֡��������ɫ��Χ
+		// 3. 现在将浮点颜色缓冲区渲染为2d四边形，并将色调映射HDR颜色渲染为默认帧缓冲区颜色范围
 		//-------------------------------------------------------------------------------------
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		shaderFinal.use();
@@ -347,13 +347,13 @@ int main()
 		glfwGetFramebufferSize(window, &display_w, &display_h);
 		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
-		// glfw ������ɫ����������ѯIO�¼�
+		// glfw 交换颜色缓冲区和轮询IO事件
 		// ------------------------------
 		glfwSwapBuffers(window);
 		glfwPollEvents();
 	}
 
-	// ɾ��/�ͷ���Դ
+	// 删除/释放资源
 	glfwTerminate();
 	return 0;
 }
@@ -502,22 +502,22 @@ void mouse_callback(GLFWwindow *window, double xpos, double ypos)
 	camera.ProcessMouseMovement(xoffset, yoffset);
 }
 
-// ���ڴ�С�任����
+// 窗口大小变换监听
 void framebuffer_size_callback(GLFWwindow *window, int width, int height)
 {
 	glViewport(0, 0, width, height);
 }
 
-// �������
+// 输入监听
 void processInput(GLFWwindow *window)
 {
-	// �˳�����
+	// 退出窗口
 	if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
 	{
 		glfwSetWindowShouldClose(window, true);
 	}
 
-	// ����ƶ�
+	// 相机移动
 	if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
 	{
 		camera.ProcessKeyboard(FORWARD, deltaTime);
@@ -535,7 +535,7 @@ void processInput(GLFWwindow *window)
 		camera.ProcessKeyboard(RIGHT, deltaTime);
 	}
 
-	// �л�bloom
+	// 切换bloom
 	if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS && !bloomKeyPressed)
 	{
 		bloom = !bloom;
@@ -546,7 +546,7 @@ void processInput(GLFWwindow *window)
 		bloomKeyPressed = false;
 	}
 
-	// �ع��
+	// 曝光度
 	if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS)
 	{
 		if (exposure > 0.0f)
@@ -559,7 +559,7 @@ void processInput(GLFWwindow *window)
 		exposure += 0.001f;
 	}
 
-	// �����ָ��Ӵ�����ʩ��
+	// 将鼠标指针从窗口中施放
 	if (glfwGetKey(window, GLFW_KEY_TAB) == GLFW_PRESS)
 	{
 		glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);

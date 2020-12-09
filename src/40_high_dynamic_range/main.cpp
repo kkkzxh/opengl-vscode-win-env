@@ -33,10 +33,10 @@ const unsigned int SCR_HEIGHT = 600;
 
 Camera camera(glm::vec3(0.0f, 0.0f, 5.0f));
 
-float deltaTime = 0.0f; // ��ǰ֡����һ֮֡���ʱ���
-float lastTime = 0.0f;	// ��һ֡��ʱ��
+float deltaTime = 0.0f; // 当前帧与上一帧之间的时间差
+float lastTime = 0.0f;	// 上一帧的时间
 
-float lastX = SCR_WIDTH / 2.0f; // �����һ֡��λ��
+float lastX = SCR_WIDTH / 2.0f; // 鼠标上一帧的位置
 float lastY = SCR_HEIGHT / 2.0f;
 bool firstMouse = true;
 
@@ -46,55 +46,55 @@ unsigned int planeVAO;
 int main()
 {
 
-	// ��ʼ��GLFW
+	// 初始化GLFW
 	glfwInit();
 
-	// ����GLFW
+	// 配置GLFW
 	const char *glsl_version = "#version 330";
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
-	// ����GLFW���ڶ���
+	// 创建GLFW窗口对象
 	GLFWwindow *window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "OpenGL", NULL, NULL);
 
 	if (window == NULL)
 	{
-		cout << "��ʼ��glfw����ʧ��!" << endl;
+		cout << "初始化glfw窗口失败!" << endl;
 		glfwTerminate();
 		return -1;
 	}
 	glfwMakeContextCurrent(window);
 
-	// ���û���ģʽ
+	// 设置绘制模式
 	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 	glfwSetCursorPosCallback(window, mouse_callback);
 	glfwSetScrollCallback(window, scroll_callback);
 
-	// ��ʼ��GLAD
+	// 初始化GLAD
 	if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
 	{
-		cout << "��ʼ��GLADʧ��!" << endl;
+		cout << "初始化GLAD失败!" << endl;
 		return -1;
 	}
 
-	// �����ӿ�
+	// 设置视口
 	glViewport(0, 0, SCR_WIDTH, SCR_HEIGHT);
 
-	// ע�ⴰ�ڼ���
+	// 注测窗口监听
 	glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
 
-	// ��Ȳ���
+	// 深度测试
 	glEnable(GL_DEPTH_TEST);
 
-	// ����gammaУ��
+	// 启用gamma校正
 	glEnable(GL_FRAMEBUFFER_SRGB);
 
-	// ʹ��ת�������߿ռ��TBN������ͼ
+	// 使用转换到切线空间的TBN法线贴图
 	Shader lightShader("./src/40_high_dynamic_range/shader/light_vert.glsl", "./src/40_high_dynamic_range/shader/light_frag.glsl");
 	Shader hdrShader("./src/40_high_dynamic_range/shader/hdr_vert.glsl", "./src/40_high_dynamic_range/shader/hdr_frag.glsl");
 
-	// ����imgui������
+	// 创建imgui上下文
 	ImGui::CreateContext();
 	ImGuiIO &io = ImGui::GetIO();
 	(void)io;
@@ -102,12 +102,12 @@ int main()
 	ImGui_ImplGlfw_InitForOpenGL(window, true);
 	ImGui_ImplOpenGL3_Init(glsl_version);
 
-	// ש��
+	// 砖面
 	unsigned int diffauseMap = loadTexture("./static/texture/bricks2.jpg");
 	unsigned int normalMap = loadTexture("./static/texture/bricks2_normal.jpg");
 	unsigned int heightMap = loadTexture("./static/texture/bricks2_disp.jpg");
 
-	//--------------ת�������߿ռ��Ч��
+	//--------------转换到切线空间的效果
 
 	// lighting info
 	// -------------
@@ -136,11 +136,11 @@ int main()
 	// texture
 	unsigned int woodTexture = loadTexture("./static/texture/wood.png");
 
-	// ���ø��㻺����
+	// 设置浮点缓冲区
 	unsigned int hdrFBO;
 	glGenFramebuffers(1, &hdrFBO);
 
-	// ����������ɫ������
+	// 创建浮点颜色缓冲区
 	unsigned int colorBuffer;
 	glGenTextures(1, &colorBuffer);
 	glBindTexture(GL_TEXTURE_2D, colorBuffer);
@@ -148,13 +148,13 @@ int main()
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
-	// ������Ȼ�����
+	// 创建深度缓冲区
 	unsigned int rboDepth;
 	glGenRenderbuffers(1, &rboDepth);
 	glBindRenderbuffer(GL_RENDERBUFFER, rboDepth);
 	glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, SCR_WIDTH, SCR_HEIGHT);
 
-	// ���ӵ�������
+	// 附加到缓冲区
 	glBindFramebuffer(GL_FRAMEBUFFER, hdrFBO);
 	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, colorBuffer, 0);
 	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, rboDepth);
@@ -173,7 +173,7 @@ int main()
 	GLboolean hdr = true;			// Change with 'Space'
 	GLfloat exposure = 0.01f; // Change with Q and E
 
-	//��Ⱦѭ��
+	//渲染循环
 	while (!glfwWindowShouldClose(window))
 	{
 		float currentFrame = glfwGetTime();
@@ -193,7 +193,7 @@ int main()
 		ImGui::SliderFloat("heightScale", &heightScale, -1.0f, 1.0f);
 		ImGui::End();
 
-		// ��������
+		// 绘制物体
 		//------------------------------------------------------------------------
 		glBindFramebuffer(GL_FRAMEBUFFER, hdrFBO);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -205,7 +205,7 @@ int main()
 		lightShader.setMat4("view", view);
 		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_2D, woodTexture);
-		// ���õƹ����
+		// 设置灯光变量
 		for (unsigned i = 0; i < lightPositions.size(); i++)
 		{
 			lightShader.setVec3("lights[" + std::to_string(i) + "].Position", lightPositions[i]);
@@ -213,7 +213,7 @@ int main()
 		}
 		lightShader.setVec3("viewPos", camera.Position);
 
-		// ��Ⱦtunel
+		// 渲染tunel
 		model = glm::mat4(1.0f);
 		model = glm::translate(model, glm::vec3(0.0f, 0.0f, 25.0f));
 		model = glm::scale(model, glm::vec3(2.5f, 2.5f, 27.5f));
@@ -238,14 +238,14 @@ int main()
 		glfwGetFramebufferSize(window, &display_w, &display_h);
 		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
-		// ������ɫ������
+		// 交换颜色缓冲区
 		glfwSwapBuffers(window);
 
-		// ����Ƿ��������¼�
+		// 检查是否出发相关事件
 		glfwPollEvents();
 	}
 
-	// ɾ��/�ͷ���Դ
+	// 删除/释放资源
 	glfwTerminate();
 	return 0;
 }
@@ -393,13 +393,13 @@ void mouse_callback(GLFWwindow *window, double xpos, double ypos)
 	camera.ProcessMouseMovement(xoffset, yoffset);
 }
 
-// ���ڴ�С�任����
+// 窗口大小变换监听
 void framebuffer_size_callback(GLFWwindow *window, int width, int height)
 {
 	glViewport(0, 0, width, height);
 }
 
-// �������
+// 输入监听
 void processInput(GLFWwindow *window)
 
 {
