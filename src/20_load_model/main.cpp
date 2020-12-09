@@ -28,10 +28,10 @@ const unsigned int SCREEN_HEIGHT = 600;
 
 Camera camera(glm::vec3(0.0f, 0.0f, 3.0f));
 
-float deltaTime = 0.0f; // µ±Ç°Ö¡ÓëÉÏÒ»Ö¡Ö®¼äµÄÊ±¼ä²î
-float lastTime = 0.0f;	// ÉÏÒ»Ö¡µÄÊ±¼ä
+float deltaTime = 0.0f; // å½“å‰å¸§ä¸ä¸Šä¸€å¸§ä¹‹é—´çš„æ—¶é—´å·®
+float lastTime = 0.0f;	// ä¸Šä¸€å¸§çš„æ—¶é—´
 
-float lastX = SCREEN_WIDTH / 2.0f; // Êó±êÉÏÒ»Ö¡µÄÎ»ÖÃ
+float lastX = SCREEN_WIDTH / 2.0f; // é¼ æ ‡ä¸Šä¸€å¸§çš„ä½ç½®
 float lastY = SCREEN_HEIGHT / 2.0f;
 bool firstMouse = true;
 
@@ -40,46 +40,46 @@ glm::vec3 lightPos(1.2f, 0.2f, 1.0f);
 int main()
 {
 
-	// ³õÊ¼»¯GLFW
+	// åˆå§‹åŒ–GLFW
 	glfwInit();
 
-	// ÅäÖÃGLFW
+	// é…ç½®GLFW
 	const char *glsl_version = "#version 330";
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
-	// ´´½¨GLFW´°¿Ú¶ÔÏó
+	// åˆ›å»ºGLFWçª—å£å¯¹è±¡
 	GLFWwindow *window = glfwCreateWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "OpenGL", NULL, NULL);
 
 	if (window == NULL)
 	{
-		cout << "³õÊ¼»¯glfw´°¿ÚÊ§°Ü!" << endl;
+		cout << "åˆå§‹åŒ–glfwçª—å£å¤±è´¥!" << endl;
 		glfwTerminate();
 		return -1;
 	}
 	glfwMakeContextCurrent(window);
 
-	// ³õÊ¼»¯GLAD
+	// åˆå§‹åŒ–GLAD
 	if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
 	{
-		cout << "³õÊ¼»¯GLADÊ§°Ü!" << endl;
+		cout << "åˆå§‹åŒ–GLADå¤±è´¥!" << endl;
 		return -1;
 	}
 
-	// ÉèÖÃÊÓ¿Ú
+	// è®¾ç½®è§†å£
 	glViewport(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
 
-	// ×¢²â´°¿Ú¼àÌı
+	// æ³¨æµ‹çª—å£ç›‘å¬
 	glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
 
-	// »æÖÆÎïÌåµÄ×ÅÉ«Æ÷
+	// ç»˜åˆ¶ç‰©ä½“çš„ç€è‰²å™¨
 	Shader ourShader("./src/20_load_model/vs.glsl", "./src/20_load_model/fs.glsl");
 
-	// »æÖÆ¹âÔ´µÄ×ÅÉ«Æ÷
+	// ç»˜åˆ¶å…‰æºçš„ç€è‰²å™¨
 	Shader lampShader("./src/20_load_model/lightCube_vs.glsl", "./src/20_load_model/lightCube_fs.glsl");
 
-	// ¶¥µãÊı×é
+	// é¡¶ç‚¹æ•°ç»„
 	float vertices[] = {
 			// positions          // normals           // texture coords
 			-0.5f, -0.5f, -0.5f, 0.0f, 0.0f, -1.0f, 0.0f, 0.0f,
@@ -122,7 +122,7 @@ int main()
 			0.5f, 0.5f, 0.5f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f,
 			0.5f, 0.5f, 0.5f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f,
 			-0.5f, 0.5f, 0.5f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f,
-			-0.5f, 0.5f, -0.5f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f}; // ¶¥²¿
+			-0.5f, 0.5f, -0.5f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f}; // é¡¶éƒ¨
 
 	glm::vec3 cubePositions[] = {
 			glm::vec3(0.0f, 0.0f, 0.0f),
@@ -157,7 +157,7 @@ int main()
 	glBindBuffer(GL_ARRAY_BUFFER, VBO);
 	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
 
-	// ¶¥µãÎ»ÖÃ
+	// é¡¶ç‚¹ä½ç½®
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void *)0);
 	glEnableVertexAttribArray(0);
 	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void *)(3 * sizeof(float)));
@@ -165,11 +165,11 @@ int main()
 	glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void *)(6 * sizeof(float)));
 	glEnableVertexAttribArray(2);
 
-	// 5 ½âÎö¶¥µãÊı¾İ
+	// 5 è§£æé¡¶ç‚¹æ•°æ®
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 	glBindVertexArray(0);
 
-	// ¹âÔ´VAO
+	// å…‰æºVAO
 	unsigned int lightVAO;
 	glGenVertexArrays(1, &lightVAO);
 	glBindVertexArray(lightVAO);
@@ -183,14 +183,14 @@ int main()
 
 	glDepthFunc(GL_LESS);
 
-	// ÉèÖÃ»æÖÆÄ£Ê½
+	// è®¾ç½®ç»˜åˆ¶æ¨¡å¼
 	// glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
 	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 	glfwSetCursorPosCallback(window, mouse_callback);
 	glfwSetScrollCallback(window, scroll_callback);
 
-	// ´´½¨imguiÉÏÏÂÎÄ
+	// åˆ›å»ºimguiä¸Šä¸‹æ–‡
 	ImGui::CreateContext();
 	ImGuiIO &io = ImGui::GetIO();
 	(void)io;
@@ -211,7 +211,7 @@ int main()
 
 	Model ourModel("./static/model/nanosuit/nanosuit.obj");
 
-	//äÖÈ¾Ñ­»·
+	//æ¸²æŸ“å¾ªç¯
 	while (!glfwWindowShouldClose(window))
 	{
 		glfwPollEvents();
@@ -224,22 +224,22 @@ int main()
 		deltaTime = currentTime - lastTime;
 		lastTime = currentTime;
 
-		// ¼ì²âÊÇ·ñĞèÒªÍË³ö´°¿Ú
+		// æ£€æµ‹æ˜¯å¦éœ€è¦é€€å‡ºçª—å£
 		processInput(window);
 		glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-		// »æÖÆÎïÌå
+		// ç»˜åˆ¶ç‰©ä½“
 		ourShader.use();
 
-		// ÉèÖÃ¹âÕÕ
+		// è®¾ç½®å…‰ç…§
 		glm::vec3 lightColor = glm::vec3(light_color.x, light_color.y, light_color.z);
 
-		// Î»ÖÃ
+		// ä½ç½®
 		ourShader.setVec3("viewPos", camera.Position);
 
 		/*
-			// ¶¨Ïò¹â
+			// å®šå‘å…‰
 			struct DirLight {
 				vec3 direction;
 				vec3 ambient;
@@ -249,11 +249,11 @@ int main()
 		*/
 		ourShader.setVec3("dirLight.direction", -0.2f, 0.3f, -2.6f);
 		ourShader.setVec3("dirLight.ambient", glm::vec3(0.1f));
-		ourShader.setVec3("dirLight.diffuse", glm::vec3(0.5f)); // ½«¹âÕÕµ÷°µÁËÒ»Ğ©ÒÔ´îÅä³¡¾°
+		ourShader.setVec3("dirLight.diffuse", glm::vec3(0.5f)); // å°†å…‰ç…§è°ƒæš—äº†ä¸€äº›ä»¥æ­é…åœºæ™¯
 		ourShader.setVec3("dirLight.specular", glm::vec3(1.0f));
 
 		/*
-			// µã¹âÔ´
+			// ç‚¹å…‰æº
 			struct PointLight {
 				vec3 position;
 
@@ -268,7 +268,7 @@ int main()
 		*/
 		ourShader.setVec3("pointLights[0].position", pointLightPositions[0]);
 		ourShader.setVec3("pointLights[0].ambient", pointLightColors[0].x * 0.1, pointLightColors[0].y * 0.1, pointLightColors[0].z * 0.1);
-		ourShader.setVec3("pointLights[0].diffuse", pointLightColors[0]); // ½«¹âÕÕµ÷°µÁËÒ»Ğ©ÒÔ´îÅä³¡¾°
+		ourShader.setVec3("pointLights[0].diffuse", pointLightColors[0]); // å°†å…‰ç…§è°ƒæš—äº†ä¸€äº›ä»¥æ­é…åœºæ™¯
 		ourShader.setVec3("pointLights[0].specular", pointLightColors[0]);
 		ourShader.setFloat("pointLights[0].constant", 1.0f);
 		ourShader.setFloat("pointLights[0].linear", 0.09f);
@@ -276,7 +276,7 @@ int main()
 
 		ourShader.setVec3("pointLights[1].position", pointLightPositions[1]);
 		ourShader.setVec3("pointLights[1].ambient", pointLightColors[1].x * 0.1, pointLightColors[1].y * 0.1, pointLightColors[1].z * 0.1);
-		ourShader.setVec3("pointLights[1].diffuse", pointLightColors[1]); // ½«¹âÕÕµ÷°µÁËÒ»Ğ©ÒÔ´îÅä³¡¾°
+		ourShader.setVec3("pointLights[1].diffuse", pointLightColors[1]); // å°†å…‰ç…§è°ƒæš—äº†ä¸€äº›ä»¥æ­é…åœºæ™¯
 		ourShader.setVec3("pointLights[1].specular", pointLightColors[1]);
 		ourShader.setFloat("pointLights[1].constant", 1.0f);
 		ourShader.setFloat("pointLights[1].linear", 0.09f);
@@ -284,7 +284,7 @@ int main()
 
 		ourShader.setVec3("pointLights[2].position", pointLightPositions[2]);
 		ourShader.setVec3("pointLights[2].ambient", pointLightColors[2].x * 0.1, pointLightColors[2].y * 0.1, pointLightColors[2].z * 0.1);
-		ourShader.setVec3("pointLights[2].diffuse", pointLightColors[2]); // ½«¹âÕÕµ÷°µÁËÒ»Ğ©ÒÔ´îÅä³¡¾°
+		ourShader.setVec3("pointLights[2].diffuse", pointLightColors[2]); // å°†å…‰ç…§è°ƒæš—äº†ä¸€äº›ä»¥æ­é…åœºæ™¯
 		ourShader.setVec3("pointLights[2].specular", pointLightColors[2]);
 		ourShader.setFloat("pointLights[2].constant", 1.0f);
 		ourShader.setFloat("pointLights[2].linear", 0.09f);
@@ -292,17 +292,17 @@ int main()
 
 		ourShader.setVec3("pointLights[3].position", pointLightPositions[3]);
 		ourShader.setVec3("pointLights[3].ambient", pointLightColors[3].x * 0.1, pointLightColors[3].y * 0.1, pointLightColors[3].z * 0.1);
-		ourShader.setVec3("pointLights[3].diffuse", pointLightColors[3]); // ½«¹âÕÕµ÷°µÁËÒ»Ğ©ÒÔ´îÅä³¡¾°
+		ourShader.setVec3("pointLights[3].diffuse", pointLightColors[3]); // å°†å…‰ç…§è°ƒæš—äº†ä¸€äº›ä»¥æ­é…åœºæ™¯
 		ourShader.setVec3("pointLights[3].specular", pointLightColors[3]);
 		ourShader.setFloat("pointLights[3].constant", 1.0f);
 		ourShader.setFloat("pointLights[3].linear", 0.09f);
 		ourShader.setFloat("pointLights[3].quadratic", 0.032f);
 
 		/*
-			¾Û¹â¹âÔ´
+			èšå…‰å…‰æº
 		*/
 		ourShader.setVec3("spotlight.ambient", glm::vec3(0.1f));
-		ourShader.setVec3("spotlight.diffuse", glm::vec3(0.8f)); // ½«¹âÕÕµ÷°µÁËÒ»Ğ©ÒÔ´îÅä³¡¾°
+		ourShader.setVec3("spotlight.diffuse", glm::vec3(0.8f)); // å°†å…‰ç…§è°ƒæš—äº†ä¸€äº›ä»¥æ­é…åœºæ™¯
 		ourShader.setVec3("spotlight.specular", glm::vec3(1.0f));
 
 		ourShader.setVec3("spotlight.position", lightPos);
@@ -318,13 +318,13 @@ int main()
 		ImGui::Text("Average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
 		ImGui::End();
 
-		// Í¶Ó°¾ØÕó
+		// æŠ•å½±çŸ©é˜µ
 		glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), float(SCREEN_WIDTH) / float(SCREEN_HEIGHT), 0.1f, 100.0f);
 		glm::mat4 view = camera.GetViewMatrix();
 		ourShader.setMat4("projection", projection);
 		ourShader.setMat4("view", view);
 
-		// Ä£ĞÍ¾ØÕó
+		// æ¨¡å‹çŸ©é˜µ
 		glm::mat4 model = glm::mat4(1.0f);
 		model = glm::rotate(model, glm::radians(45.0f * (float)glfwGetTime()), glm::vec3(0.0f, 1.0f, 0.0f));
 		model = glm::translate(model, glm::vec3(0.0f, -0.1f, 0.0f));
@@ -332,8 +332,8 @@ int main()
 		ourShader.setMat4("model", model);
 		ourModel.Draw(ourShader);
 
-		// ÉèÖÃ²ÄÖÊ
-		// ¹âÕÕÌùÍ¼
+		// è®¾ç½®æè´¨
+		// å…‰ç…§è´´å›¾
 		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_2D, diffuseMap);
 
@@ -343,7 +343,7 @@ int main()
 
 		glBindVertexArray(VAO);
 
-		// »æÖÆ¹âÔ´Á¢·½Ìå
+		// ç»˜åˆ¶å…‰æºç«‹æ–¹ä½“
 		lampShader.use();
 		lampShader.setMat4("projection", projection);
 		lampShader.setMat4("view", view);
@@ -373,18 +373,18 @@ int main()
 		glfwGetFramebufferSize(window, &display_w, &display_h);
 		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
-		// ½»»»ÑÕÉ«»º³åÇø
+		// äº¤æ¢é¢œè‰²ç¼“å†²åŒº
 		glfwSwapBuffers(window);
 
-		// ¼ì²éÊÇ·ñ³ö·¢Ïà¹ØÊÂ¼ş
+		// æ£€æŸ¥æ˜¯å¦å‡ºå‘ç›¸å…³äº‹ä»¶
 		glfwPollEvents();
 	}
 
-	// É¾³ıÏà¹Ø×ÊÔ´
+	// åˆ é™¤ç›¸å…³èµ„æº
 	glDeleteVertexArrays(1, &VAO);
 	glDeleteBuffers(1, &VBO);
 
-	// É¾³ı/ÊÍ·Å×ÊÔ´
+	// åˆ é™¤/é‡Šæ”¾èµ„æº
 	glfwTerminate();
 	return 0;
 }
@@ -411,13 +411,13 @@ void mouse_callback(GLFWwindow *window, double xpos, double ypos)
 	camera.ProcessMouseMovement(xoffset, yoffset);
 }
 
-// ´°¿Ú´óĞ¡±ä»»¼àÌı
+// çª—å£å¤§å°å˜æ¢ç›‘å¬
 void framebuffer_size_callback(GLFWwindow *window, int width, int height)
 {
 	glViewport(0, 0, width, height);
 }
 
-// ÊäÈë¼àÌı
+// è¾“å…¥ç›‘å¬
 void processInput(GLFWwindow *window)
 
 {
