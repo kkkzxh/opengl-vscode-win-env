@@ -26,9 +26,9 @@ void main(){
   float Specular = texture(gColorSpec, TexCoords).r;
 
   // 计算光照
-  vec3 lighting = Diffuse * 0.1;
+  vec3 lighting = Diffuse * 0.5;
   vec3 viewDir = normalize(viewPos - FragPos);
-  for(int i = 0; i < NR_LIGHTF; i++)
+  for(int i = 0; i < NR_LIGHTF; ++i)
   {
       // diffuse
       vec3 lightDir = normalize(lights[i].Position - FragPos);
@@ -46,5 +46,5 @@ void main(){
       specular *= attenuation;
       lighting += diffuse + specular;
   }
-  FragColor = vec4(Normal, 1.0);
+  FragColor = vec4(lighting, 1.0);
 }

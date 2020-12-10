@@ -31,7 +31,7 @@ void renderCube();
 const unsigned int SCR_WIDTH = 800;
 const unsigned int SCR_HEIGHT = 600;
 
-Camera camera(glm::vec3(0.0f, 0.0f, 15.0f));
+Camera camera(glm::vec3(0.0f, 3.0f, 5.0f));
 
 float deltaTime = 0.0f; // 当前帧与上一帧之间的时间差
 float lastTime = 0.0f;  // 上一帧的时间
@@ -64,7 +64,7 @@ int main()
 
   // 创建GLFW窗口对象
   // ----------------
-  GLFWwindow *window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "OpenGL", NULL, NULL);
+  GLFWwindow *window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "LearnOpenGL", NULL, NULL);
 
   if (window == NULL)
   {
@@ -118,15 +118,15 @@ int main()
   // -------
   Model nanosuitModel("./static/model/nanosuit/nanosuit.obj");
   vector<glm::vec3> modelPositions;
-  modelPositions.push_back(glm::vec3(-3.0, -3.0, -3.0));
-  modelPositions.push_back(glm::vec3(0.0, -3.0, -3.0));
-  modelPositions.push_back(glm::vec3(3.0, -3.0, -3.0));
-  modelPositions.push_back(glm::vec3(-3.0, -3.0, 0.0));
-  modelPositions.push_back(glm::vec3(0.0, -3.0, 0.0));
-  modelPositions.push_back(glm::vec3(3.0, -3.0, 0.0));
-  modelPositions.push_back(glm::vec3(-3.0, -3.0, 3.0));
-  modelPositions.push_back(glm::vec3(0.0, -3.0, 3.0));
-  modelPositions.push_back(glm::vec3(3.0, -3.0, 3.0));
+  modelPositions.push_back(glm::vec3(-3.0, -0.5, -3.0));
+  modelPositions.push_back(glm::vec3(0.0, -0.5, -3.0));
+  modelPositions.push_back(glm::vec3(3.0, -0.5, -3.0));
+  modelPositions.push_back(glm::vec3(-3.0, -0.5, 0.0));
+  modelPositions.push_back(glm::vec3(0.0, -0.5, 0.0));
+  modelPositions.push_back(glm::vec3(3.0, -0.5, 0.0));
+  modelPositions.push_back(glm::vec3(-3.0, -0.5, 3.0));
+  modelPositions.push_back(glm::vec3(0.0, -0.5, 3.0));
+  modelPositions.push_back(glm::vec3(3.0, -0.5, 3.0));
 
   // 配置 G-Buffer 缓冲区
   // ---------
@@ -138,7 +138,7 @@ int main()
   // - 位置颜色缓冲
   glGenTextures(1, &gPosition);
   glBindTexture(GL_TEXTURE_2D, gPosition);
-  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, SCR_WIDTH, SCR_HEIGHT, 0, GL_RGB, GL_FLOAT, NULL);
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, SCR_WIDTH, SCR_HEIGHT, 0, GL_RGBA, GL_FLOAT, NULL);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
   glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, gPosition, 0);
@@ -146,18 +146,18 @@ int main()
   // - 法线颜色缓冲
   glGenTextures(1, &gNormal);
   glBindTexture(GL_TEXTURE_2D, gNormal);
-  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, SCR_WIDTH, SCR_HEIGHT, 0, GL_RGB, GL_FLOAT, NULL);
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, SCR_WIDTH, SCR_HEIGHT, 0, GL_RGBA, GL_FLOAT, NULL);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-  glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, gNormal, 0);
+  glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, gNormal, 0);
 
   // - 颜色和镜面颜色缓冲
   glGenTextures(1, &gColorSpec);
   glBindTexture(GL_TEXTURE_2D, gColorSpec);
-  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, SCR_WIDTH, SCR_HEIGHT, 0, GL_RGBA, GL_FLOAT, NULL);
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, SCR_WIDTH, SCR_HEIGHT, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-  glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, gColorSpec, 0);
+  glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT2, GL_TEXTURE_2D, gColorSpec, 0);
 
   // - 告诉OpenGL我们要使用（帧缓冲的）那种颜色附件来进行渲染
   GLuint attachments[3] = {GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2};
@@ -252,6 +252,10 @@ int main()
     }
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
+    shader.use();
+    shader.setMat4("projection", projection);
+    shader.setMat4("view", view);
+    renderCube();
     // 2. Lighting pass 通过使用gbuffer的内容逐像素的遍历四分之一的屏幕来迭代计算照明
     // -------------------------------------------------------------------------
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -278,9 +282,22 @@ int main()
     }
     shaderRender.setVec3("viewPos", camera.Position);
 
-    // renderCube();
-
     renderQuad();
+
+    // 渲染立方体
+    shader.use();
+    shader.setMat4("projection", projection);
+    shader.setMat4("view", view);
+
+    for (unsigned int i = 0; i < lightPositions.size(); i++)
+    {
+      model = glm::mat4(1.0);
+      model = glm::translate(model, lightPositions[i]);
+      model = glm::scale(model, glm::vec3(0.45));
+      shader.setVec3("lightColor", lightColors[i]);
+      shader.setMat4("model", model);
+      renderCube();
+    }
 
     //cout << "bloom: " << (bloom ? "on" : "off") << " | exposure: " << exposure << endl;
 

@@ -14,9 +14,10 @@ uniform mat4 model;
 void main(){
   vec4 worldPosition = model * vec4(iPosition, 1.0f);
   FragPos = worldPosition.xyz;
-  gl_Position = projection * view * worldPosition;
   TexCoords = iTexCoords;
-
+  
   mat3 normalMatrix = transpose(inverse(mat3(model)));
   Normal = normalMatrix * iNormal;
+
+   gl_Position = projection * view * worldPosition;
 }
