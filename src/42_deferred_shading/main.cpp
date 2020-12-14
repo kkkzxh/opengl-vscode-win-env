@@ -284,7 +284,8 @@ int main()
 
     renderQuad();
 
-    // 渲染立方体
+    // 正向渲染立方体
+    // -------------
     shader.use();
     shader.setMat4("projection", projection);
     shader.setMat4("view", view);
