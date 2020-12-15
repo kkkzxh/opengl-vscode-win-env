@@ -45,6 +45,9 @@ bool bloomKeyPressed = false;
 bool bloom = true;
 float exposure = 1.0;
 
+/**
+ * 用于测试光体积的示例
+ */
 int main()
 {
 
@@ -107,10 +110,10 @@ int main()
 
   // 编译shader
   // ----------
-  Shader shaderGeometry("./src/42_deferred_shading/shader/deferred_geometry_vert.glsl", "./src/42_deferred_shading/shader/deferred_geometry_frag.glsl");
-  Shader shaderRender("./src/42_deferred_shading/shader/deferred_render_light_vert.glsl", "./src/42_deferred_shading/shader/deferred_render_light_frag.glsl");
+  Shader shaderGeometry("./src/43_light_volumes/shader/deferred_geometry_vert.glsl", "./src/43_light_volumes/shader/deferred_geometry_frag.glsl");
+  Shader shaderRender("./src/43_light_volumes/shader/deferred_render_light_vert.glsl", "./src/43_light_volumes/shader/deferred_render_light_frag.glsl");
   // 混合前向渲染和后向渲染结合
-  Shader shader("./src/42_deferred_shading/shader/cube_vert.glsl", "./src/42_deferred_shading/shader/cube_frag.glsl");
+  Shader shader("./src/43_light_volumes/shader/cube_vert.glsl", "./src/43_light_volumes/shader/cube_frag.glsl");
 
   // 加载贴图
   // --------
