@@ -283,6 +283,11 @@ int main()
 
       shaderRender.setFloat("lights[" + to_string(i) + "].Linear", linear);
       shaderRender.setFloat("lights[" + to_string(i) + "].Quadratic", quadratic);
+
+      // 计算光源照射半径
+      const float maxBrightness = std::fmaxf(std::fmaxf(lightColors[i].r, lightColors[i].g), lightColors[i].b);
+      float radius = (-linear + std::sqrt(linear * linear - 4 * quadratic * (constant - (256.0f / 5.0f) * maxBrightness))) / (2.0f * quadratic);
+      shaderRender.setFloat("lights[" + std::to_string(i) + "].Radius", radius);
     }
     shaderRender.setVec3("viewPos", camera.Position);
 

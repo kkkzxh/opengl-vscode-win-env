@@ -9,8 +9,10 @@ uniform sampler2D gColorSpec; //  2
 struct Light {
   vec3 Position;
   vec3 Color;
+
   float Linear;
   float Quadratic;
+  float Radius;
 };
 
 const int NR_LIGHTF = 32;
@@ -30,21 +32,25 @@ void main(){
   vec3 viewDir = normalize(viewPos - FragPos);
   for(int i = 0; i < NR_LIGHTF; ++i)
   {
-      // diffuse
-      vec3 lightDir = normalize(lights[i].Position - FragPos);
-      vec3 diffuse = max(dot(Normal, lightDir), 0.0) * Diffuse * lights[i].Color;
 
-      // specular
-      vec3 halfwayDir = normalize(lightDir + viewDir);
-      float spec = pow(max(dot(Normal, halfwayDir), 0.0), 64.0);
-      vec3 specular = lights[i].Color * spec * Specular;
-
-      // attenuation 衰减
+      // 计算当前片元和光源之间的距离
       float distance = length(lights[i].Position - FragPos);
-      float attenuation = 1.0 / (1.0 + lights[i].Linear * distance + lights[i].Quadratic * distance * distance);
-      diffuse *= attenuation;
-      specular *= attenuation;
-      lighting += diffuse + specular;
+      if(distance < lights[i].Radius) {
+        // diffuse
+        vec3 lightDir = normalize(lights[i].Position - FragPos);
+        vec3 diffuse = max(dot(Normal, lightDir), 0.0) * Diffuse * lights[i].Color;
+
+        // specular
+        vec3 halfwayDir = normalize(lightDir + viewDir);
+        float spec = pow(max(dot(Normal, halfwayDir), 0.0), 64.0);
+        vec3 specular = lights[i].Color * spec * Specular;
+
+        // attenuation 衰减
+        float attenuation = 1.0 / (1.0 + lights[i].Linear * distance + lights[i].Quadratic * distance * distance);
+        diffuse *= attenuation;
+        specular *= attenuation;
+        lighting += diffuse + specular;
+      }
   }
   FragColor = vec4(lighting, 1.0);
 }
