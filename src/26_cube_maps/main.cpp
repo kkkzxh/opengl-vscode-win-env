@@ -19,82 +19,88 @@ void framebuffer_size_callback(GLFWwindow *window, int width, int height);
 void processInput(GLFWwindow *window);
 void mouse_callback(GLFWwindow *window, double xpos, double ypos);
 void scroll_callback(GLFWwindow *window, double xoffset, double yoffset);
-unsigned int loadTexture(char const *path);
+unsigned int loadTexture(char const *path, bool gammaCorrection);
 unsigned int loadCubemap(vector<std::string> faces);
+
+void renderQuad();
+void renderCube();
 
 const unsigned int SCREEN_WIDTH = 800;
 const unsigned int SCREEN_HEIGHT = 600;
 
-Camera camera(glm::vec3(1.0f, 1.0f, 3.0f));
+Camera camera(glm::vec3(1.0f, 1.0f, 13.0f));
 
-float deltaTime = 0.0f; // µ±Ç°Ö¡ÓëÉÏÒ»Ö¡Ö®¼äµÄÊ±¼ä²î
-float lastTime = 0.0f;	// ÉÏÒ»Ö¡µÄÊ±¼ä
+float deltaTime = 0.0f; // å½“å‰å¸§ä¸ä¸Šä¸€å¸§ä¹‹é—´çš„æ—¶é—´å·®
+float lastTime = 0.0f;	// ä¸Šä¸€å¸§çš„æ—¶é—´
 
-float lastX = SCREEN_WIDTH / 2.0f; // Êó±êÉÏÒ»Ö¡µÄÎ»ÖÃ
+float lastX = SCREEN_WIDTH / 2.0f; // é¼ æ ‡ä¸Šä¸€å¸§çš„ä½ç½®
 float lastY = SCREEN_HEIGHT / 2.0f;
 bool firstMouse = true;
+
+// bloom è®¾ç½®
+bool bloomKeyPressed = false;
+bool bloom = true;
+float exposure = 1.0;
 
 int main()
 {
 
-	// ³õÊ¼»¯GLFW
+	// åˆå§‹åŒ–GLFW
 	glfwInit();
 
-	// ÅäÖÃGLFW
+	// é…ç½®GLFW
 	const char *glsl_version = "#version 330";
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
-	// ´´½¨GLFW´°¿Ú¶ÔÏó
+	// åˆ›å»ºGLFWçª—å£å¯¹è±¡
 	GLFWwindow *window = glfwCreateWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "OpenGL", NULL, NULL);
 
 	if (window == NULL)
 	{
-		cout << "³õÊ¼»¯glfw´°¿ÚÊ§°Ü!" << endl;
+		cout << "åˆå§‹åŒ–glfwçª—å£å¤±è´¥!" << endl;
 		glfwTerminate();
 		return -1;
 	}
 	glfwMakeContextCurrent(window);
 
-	// ÉèÖÃ»æÖÆÄ£Ê½
-	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+	// è®¾ç½®ç»˜åˆ¶æ¨¡å¼
+	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 	glfwSetCursorPosCallback(window, mouse_callback);
 	glfwSetScrollCallback(window, scroll_callback);
 
-	// ³õÊ¼»¯GLAD
+	// åˆå§‹åŒ–GLAD
 	if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
 	{
-		cout << "³õÊ¼»¯GLADÊ§°Ü!" << endl;
+		cout << "åˆå§‹åŒ–GLADå¤±è´¥!" << endl;
 		return -1;
 	}
 
-	// ÉèÖÃÊÓ¿Ú
+	// è®¾ç½®è§†å£
 	glViewport(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
 
-	// ×¢²â´°¿Ú¼àÌı
+	// æ³¨æµ‹çª—å£ç›‘å¬
 	glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
 
-	// Éî¶È²âÊÔ
+	// æ·±åº¦æµ‹è¯•
 	glEnable(GL_DEPTH_TEST);
 	glDepthFunc(GL_LESS);
 
-	// »ìºÏ
+	// æ··åˆ
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-	// ÃæÌŞ³ı
+	// é¢å‰”é™¤
 	glEnable(GL_CULL_FACE);
-	glCullFace(GL_BACK); // ÌŞ³ı±³ÏòµÄÃæ
-	glFrontFace(GL_CCW); //½«Ë³Ê±ÕëµÄÃæ¶¨ÒåÎªÕıÏòµÄÃæ
+	glCullFace(GL_BACK); // å‰”é™¤èƒŒå‘çš„é¢
+	glFrontFace(GL_CCW); //å°†é¡ºæ—¶é’ˆçš„é¢å®šä¹‰ä¸ºæ­£å‘çš„é¢
 
-	// »æÖÆÎïÌåµÄ×ÅÉ«Æ÷
+	// ç»˜åˆ¶ç‰©ä½“çš„ç€è‰²å™¨
 	Shader shader("./src/26_cube_maps/blending_vert.glsl", "./src/26_cube_maps/blending_frag.glsl");
-	Shader screenShader("./src/26_cube_maps/framebuffer_vert.glsl", "./src/26_cube_maps/framebuffer_frag.glsl");
 	Shader skyboxShader("./src/26_cube_maps/skybox_vert.glsl", "./src/26_cube_maps/skybox_frag.glsl");
-	Shader reflectShader("./src/26_cube_maps/reflect_vert.glsl", "./src/26_cube_maps/reflect_frag.glsl");
 
-	// ¶¥µãÊı×é
+	// é¡¶ç‚¹æ•°ç»„
 	float cubeVertices[] = {
 			// Back face
 			-0.5f, -0.5f, -0.5f, 0.0f, 0.0f, // Bottom-left
@@ -139,35 +145,6 @@ int main()
 			-0.5f, 0.5f, -0.5f, 0.0f, 1.0f, // top-left
 			-0.5f, 0.5f, 0.5f, 0.0f, 0.0f		// bottom-left
 	};
-	float planeVertices[] = {
-			// positions          // texture
-			5.0f, -0.5f, 5.0f, 2.0f, 0.0f,
-			-5.0f, -0.5f, 5.0f, 0.0f, 0.0f,
-			-5.0f, -0.5f, -5.0f, 0.0f, 2.0f,
-
-			5.0f, -0.5f, 5.0f, 2.0f, 0.0f,
-			-5.0f, -0.5f, -5.0f, 0.0f, 2.0f,
-			5.0f, -0.5f, -5.0f, 2.0f, 2.0f};
-
-	float transparentVertices[] = {
-			// positions         // texture Coords (swapped y coordinates because texture is flipped upside down)
-			0.0f, 0.5f, 0.0f, 0.0f, 0.0f,
-			0.0f, -0.5f, 0.0f, 0.0f, 1.0f,
-			1.0f, -0.5f, 0.0f, 1.0f, 1.0f,
-
-			0.0f, 0.5f, 0.0f, 0.0f, 0.0f,
-			1.0f, -0.5f, 0.0f, 1.0f, 1.0f,
-			1.0f, 0.5f, 0.0f, 1.0f, 0.0f};
-
-	float quadVertices[] = {
-			// positions   // texCoords
-			-1.0f, 1.0f, 0.0f, 1.0f,
-			-1.0f, -1.0f, 0.0f, 0.0f,
-			1.0f, -1.0f, 1.0f, 0.0f,
-
-			-1.0f, 1.0f, 0.0f, 1.0f,
-			1.0f, -1.0f, 1.0f, 0.0f,
-			1.0f, 1.0f, 1.0f, 1.0f};
 
 	float skyboxVertices[] = {
 			// positions
@@ -213,49 +190,6 @@ int main()
 			-1.0f, -1.0f, 1.0f,
 			1.0f, -1.0f, 1.0f};
 
-	float reflectVertices[] = {
-			-0.5f, -0.5f, -0.5f, 0.0f, 0.0f, -1.0f,
-			0.5f, -0.5f, -0.5f, 0.0f, 0.0f, -1.0f,
-			0.5f, 0.5f, -0.5f, 0.0f, 0.0f, -1.0f,
-			0.5f, 0.5f, -0.5f, 0.0f, 0.0f, -1.0f,
-			-0.5f, 0.5f, -0.5f, 0.0f, 0.0f, -1.0f,
-			-0.5f, -0.5f, -0.5f, 0.0f, 0.0f, -1.0f,
-
-			-0.5f, -0.5f, 0.5f, 0.0f, 0.0f, 1.0f,
-			0.5f, -0.5f, 0.5f, 0.0f, 0.0f, 1.0f,
-			0.5f, 0.5f, 0.5f, 0.0f, 0.0f, 1.0f,
-			0.5f, 0.5f, 0.5f, 0.0f, 0.0f, 1.0f,
-			-0.5f, 0.5f, 0.5f, 0.0f, 0.0f, 1.0f,
-			-0.5f, -0.5f, 0.5f, 0.0f, 0.0f, 1.0f,
-
-			-0.5f, 0.5f, 0.5f, -1.0f, 0.0f, 0.0f,
-			-0.5f, 0.5f, -0.5f, -1.0f, 0.0f, 0.0f,
-			-0.5f, -0.5f, -0.5f, -1.0f, 0.0f, 0.0f,
-			-0.5f, -0.5f, -0.5f, -1.0f, 0.0f, 0.0f,
-			-0.5f, -0.5f, 0.5f, -1.0f, 0.0f, 0.0f,
-			-0.5f, 0.5f, 0.5f, -1.0f, 0.0f, 0.0f,
-
-			0.5f, 0.5f, 0.5f, 1.0f, 0.0f, 0.0f,
-			0.5f, 0.5f, -0.5f, 1.0f, 0.0f, 0.0f,
-			0.5f, -0.5f, -0.5f, 1.0f, 0.0f, 0.0f,
-			0.5f, -0.5f, -0.5f, 1.0f, 0.0f, 0.0f,
-			0.5f, -0.5f, 0.5f, 1.0f, 0.0f, 0.0f,
-			0.5f, 0.5f, 0.5f, 1.0f, 0.0f, 0.0f,
-
-			-0.5f, -0.5f, -0.5f, 0.0f, -1.0f, 0.0f,
-			0.5f, -0.5f, -0.5f, 0.0f, -1.0f, 0.0f,
-			0.5f, -0.5f, 0.5f, 0.0f, -1.0f, 0.0f,
-			0.5f, -0.5f, 0.5f, 0.0f, -1.0f, 0.0f,
-			-0.5f, -0.5f, 0.5f, 0.0f, -1.0f, 0.0f,
-			-0.5f, -0.5f, -0.5f, 0.0f, -1.0f, 0.0f,
-
-			-0.5f, 0.5f, -0.5f, 0.0f, 1.0f, 0.0f,
-			0.5f, 0.5f, -0.5f, 0.0f, 1.0f, 0.0f,
-			0.5f, 0.5f, 0.5f, 0.0f, 1.0f, 0.0f,
-			0.5f, 0.5f, 0.5f, 0.0f, 1.0f, 0.0f,
-			-0.5f, 0.5f, 0.5f, 0.0f, 1.0f, 0.0f,
-			-0.5f, 0.5f, -0.5f, 0.0f, 1.0f, 0.0f};
-
 	unsigned int cubeVAO, cubeVBO;
 	glGenVertexArrays(1, &cubeVAO);
 	glGenBuffers(1, &cubeVBO);
@@ -270,45 +204,6 @@ int main()
 	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void *)(3 * sizeof(float)));
 	glBindVertexArray(0);
 
-	unsigned int planeVAO, planeVBO;
-	glGenVertexArrays(1, &planeVAO);
-	glGenBuffers(1, &planeVBO);
-	glBindVertexArray(planeVAO);
-	glBindBuffer(GL_ARRAY_BUFFER, planeVBO);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(planeVertices), &planeVertices, GL_STATIC_DRAW);
-
-	glEnableVertexAttribArray(0);
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void *)0);
-
-	glEnableVertexAttribArray(1);
-	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void *)(3 * sizeof(float)));
-	glBindVertexArray(0);
-
-	// transparent VAO
-	unsigned int transparentVAO, transparentVBO;
-	glGenVertexArrays(1, &transparentVAO);
-	glGenBuffers(1, &transparentVBO);
-	glBindVertexArray(transparentVAO);
-	glBindBuffer(GL_ARRAY_BUFFER, transparentVBO);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(transparentVertices), transparentVertices, GL_STATIC_DRAW);
-	glEnableVertexAttribArray(0);
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void *)0);
-	glEnableVertexAttribArray(1);
-	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void *)(3 * sizeof(float)));
-	glBindVertexArray(0);
-
-	// screen quad VAO
-	unsigned int quadVAO, quadVBO;
-	glGenVertexArrays(1, &quadVAO);
-	glGenBuffers(1, &quadVBO);
-	glBindVertexArray(quadVAO);
-	glBindBuffer(GL_ARRAY_BUFFER, quadVBO);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(quadVertices), &quadVertices, GL_STATIC_DRAW);
-	glEnableVertexAttribArray(0);
-	glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void *)0);
-	glEnableVertexAttribArray(1);
-	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void *)(2 * sizeof(float)));
-
 	// skyboxVBO quad VAO
 	unsigned int skyboxVAO, skyboxVBO;
 	glGenVertexArrays(1, &skyboxVAO);
@@ -319,24 +214,12 @@ int main()
 	glEnableVertexAttribArray(0);
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void *)0);
 
-	// reflectVBO reflectVAO
-	unsigned int reflectVAO, reflectVBO;
-	glGenVertexArrays(1, &reflectVAO);
-	glGenBuffers(1, &reflectVBO);
-	glBindVertexArray(reflectVAO);
-	glBindBuffer(GL_ARRAY_BUFFER, reflectVBO);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(reflectVertices), &reflectVertices, GL_STATIC_DRAW);
-	glEnableVertexAttribArray(0);
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void *)0);
-	glEnableVertexAttribArray(1);
-	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void *)(3 * sizeof(float)));
+	// åŠ è½½çº¹ç†
+	unsigned int cubeTexture = loadTexture("./static/texture/container.jpg", false);
+	unsigned int floorTexture = loadTexture("./static/texture/metal.png", false);
+	unsigned int grassTexture = loadTexture("./static/texture/blending_transparent_window.png", false);
 
-	// ¼ÓÔØÎÆÀí
-	unsigned int cubeTexture = loadTexture("./static/texture/container.jpg");
-	unsigned int floorTexture = loadTexture("./static/texture/metal.png");
-	unsigned int grassTexture = loadTexture("./static/texture/blending_transparent_window.png");
-
-	// ´´½¨imguiÉÏÏÂÎÄ
+	// åˆ›å»ºimguiä¸Šä¸‹æ–‡
 	ImGui::CreateContext();
 	ImGuiIO &io = ImGui::GetIO();
 	(void)io;
@@ -347,14 +230,8 @@ int main()
 	shader.use();
 	shader.setInt("texture1", 0);
 
-	screenShader.use();
-	screenShader.setInt("screenTexture", 0);
-
 	skyboxShader.use();
 	skyboxShader.setInt("skybox", 0);
-
-	reflectShader.use();
-	reflectShader.setInt("skybox", 0);
 
 	vector<glm::vec3> windows{
 			glm::vec3(-1.5f, 0.0f, -0.48f),
@@ -362,42 +239,6 @@ int main()
 			glm::vec3(0.0f, 0.0f, 0.7f),
 			glm::vec3(-0.3f, 0.0f, -2.3f),
 			glm::vec3(0.5f, 0.0f, -0.6f)};
-
-	// ´´½¨Ò»¸öÖ¡»º³å¶ÔÏó²¢°ó¶¨Ëü
-	unsigned int framebuffer;
-	glGenFramebuffers(1, &framebuffer);
-	glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
-
-	// ´´½¨Ò»¸öÑÕÉ«¸½¼ş²¢½«Ëü¸½¼Óµ½Ö¡»º³åÉÏ
-	// Éú³ÉÎÆÀí
-	unsigned int texColorBuffer;
-	glGenTextures(1, &texColorBuffer);
-	glBindTexture(GL_TEXTURE_2D, texColorBuffer);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 800, 600, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-	glBindTexture(GL_TEXTURE_2D, 0);
-
-	// ½«ÑÕÉ«¸½¼Ó¸½¼Óµ½µ±Ç°°ó¶¨µÄÖ¡»º³åÉÏ
-	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texColorBuffer, 0);
-
-	// ´´½¨äÖÈ¾»º³å¶ÔÏó
-	unsigned int rbo;
-	glGenRenderbuffers(1, &rbo);
-	glBindRenderbuffer(GL_RENDERBUFFER, rbo);
-	glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, 800, 600);
-	glBindRenderbuffer(GL_RENDERBUFFER, 0);
-
-	// ½«äÖÈ¾»º³å¶ÔÏó¸½¼Óµ½Ö¡»º³åµÄÉî¶ÈºÍÄ£°å¸½¼şÉÏ
-	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, rbo);
-
-	// ¼ì²éÖ¡»º³åÊÇ·ñÍêÕû
-	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
-	{
-		cout << "ERROR:: FRAMEBUFFER :: framebuffer is not complete£¡ " << std::endl;
-	}
-
-	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
 	vector<string> faces{
 			"./static/texture/skybox/right.jpg",
@@ -409,7 +250,7 @@ int main()
 
 	unsigned int cubemapTexture = loadCubemap(faces);
 
-	//äÖÈ¾Ñ­»·
+	//æ¸²æŸ“å¾ªç¯
 	while (!glfwWindowShouldClose(window))
 	{
 		float currentFrame = glfwGetTime();
@@ -422,7 +263,7 @@ int main()
 		ImGui_ImplGlfw_NewFrame();
 		ImGui::NewFrame();
 
-		// ÅÅĞò
+		// æ’åº
 		map<float, glm::vec3> sorted;
 		for (unsigned int i = 0; i < windows.size(); i++)
 		{
@@ -430,10 +271,7 @@ int main()
 			sorted[distance] = windows[i];
 		}
 
-		// °ó¶¨Ö¡»º³å
-		glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
-
-		// ¼ì²âÊÇ·ñĞèÒªÍË³ö´°¿Ú
+		// æ£€æµ‹æ˜¯å¦éœ€è¦é€€å‡ºçª—å£
 		glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		glEnable(GL_DEPTH_TEST);
@@ -445,43 +283,18 @@ int main()
 		shader.setMat4("view", view);
 		shader.setMat4("projection", projection);
 
-		// Á¢·½Ìå
+		// ç«‹æ–¹ä½“
 		glBindVertexArray(cubeVAO);
 		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_2D, cubeTexture);
 		model = glm::translate(model, glm::vec3(-1.0f, 0.0f, -2.0f));
 		shader.setMat4("model", model);
-		//glDrawArrays(GL_TRIANGLES, 0, 36);
-		model = glm::mat4(1.0f);
-		model = glm::translate(model, glm::vec3(1.0f, 0.0f, -1.0f));
-		shader.setMat4("model", model);
-		//glDrawArrays(GL_TRIANGLES, 0, 36);
-
-		glDisable(GL_CULL_FACE);
-		// µØ°å
-		glBindVertexArray(planeVAO);
-		glBindTexture(GL_TEXTURE_2D, floorTexture);
-		shader.setMat4("model", glm::mat4(1.0f));
-		//glDrawArrays(GL_TRIANGLES, 0, 6);
+		glDrawArrays(GL_TRIANGLES, 0, 36);
 
 		ImGui::Begin("view value");
 
 		ImGui::Text("Average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
 		ImGui::End();
-
-		// »æÖÆ·´ÉäÁ¢·½Ìå
-		reflectShader.use();
-		model = glm::mat4(1.0f);
-		reflectShader.setMat4("model", model);
-		reflectShader.setMat4("view", view);
-		reflectShader.setMat4("projection", projection);
-		reflectShader.setVec3("cameraPos", camera.Position);
-
-		glBindVertexArray(reflectVAO);
-		glActiveTexture(GL_TEXTURE0);
-		glBindTexture(GL_TEXTURE_CUBE_MAP, cubemapTexture);
-		glDrawArrays(GL_TRIANGLES, 0, 36);
-		glBindVertexArray(0);
 
 		glDepthFunc(GL_LEQUAL);
 		skyboxShader.use();
@@ -500,43 +313,150 @@ int main()
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 		glDisable(GL_DEPTH_TEST);
 
-		glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-		glClear(GL_COLOR_BUFFER_BIT);
-
-		screenShader.use();
-		screenShader.setFloat("offset", 1 / 300.0);
-
-		glBindVertexArray(quadVAO);
-		glBindTexture(GL_TEXTURE_2D, texColorBuffer);
-		glDrawArrays(GL_TRIANGLES, 0, 6);
-
 		// Rendering
 		ImGui::Render();
 		int display_w, display_h;
 		glfwGetFramebufferSize(window, &display_w, &display_h);
 		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
-		// ½»»»ÑÕÉ«»º³åÇø
+		// äº¤æ¢é¢œè‰²ç¼“å†²åŒº
 		glfwSwapBuffers(window);
 
-		// ¼ì²éÊÇ·ñ³ö·¢Ïà¹ØÊÂ¼ş
+		// æ£€æŸ¥æ˜¯å¦å‡ºå‘ç›¸å…³äº‹ä»¶
 		glfwPollEvents();
 	}
 
 	glDeleteVertexArrays(1, &cubeVAO);
-	glDeleteVertexArrays(1, &planeVAO);
-	glDeleteVertexArrays(1, &quadVAO);
 	glDeleteVertexArrays(1, &skyboxVAO);
 
 	glDeleteBuffers(1, &cubeVBO);
-	glDeleteBuffers(1, &planeVBO);
-	glDeleteBuffers(1, &quadVBO);
 	glDeleteBuffers(1, &skyboxVBO);
 
-	// É¾³ı/ÊÍ·Å×ÊÔ´
+	// åˆ é™¤/é‡Šæ”¾èµ„æº
 	glfwTerminate();
 	return 0;
 }
+unsigned int cubeVAO = 0;
+unsigned int cubeVBO = 0;
+void renderCube()
+{
+	// initialize (if necessary)
+	if (cubeVAO == 0)
+	{
+		float vertices[] = {
+				// back face
+				-1.0f, -1.0f, -1.0f, 0.0f, 0.0f, -1.0f, 0.0f, 0.0f, // bottom-left
+				1.0f, 1.0f, -1.0f, 0.0f, 0.0f, -1.0f, 1.0f, 1.0f,		// top-right
+				1.0f, -1.0f, -1.0f, 0.0f, 0.0f, -1.0f, 1.0f, 0.0f,	// bottom-right
+				1.0f, 1.0f, -1.0f, 0.0f, 0.0f, -1.0f, 1.0f, 1.0f,		// top-right
+				-1.0f, -1.0f, -1.0f, 0.0f, 0.0f, -1.0f, 0.0f, 0.0f, // bottom-left
+				-1.0f, 1.0f, -1.0f, 0.0f, 0.0f, -1.0f, 0.0f, 1.0f,	// top-left
+				// front face
+				-1.0f, -1.0f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, // bottom-left
+				1.0f, -1.0f, 1.0f, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f,	// bottom-right
+				1.0f, 1.0f, 1.0f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f,		// top-right
+				1.0f, 1.0f, 1.0f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f,		// top-right
+				-1.0f, 1.0f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f, 1.0f,	// top-left
+				-1.0f, -1.0f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, // bottom-left
+				// left face
+				-1.0f, 1.0f, 1.0f, -1.0f, 0.0f, 0.0f, 1.0f, 0.0f,		// top-right
+				-1.0f, 1.0f, -1.0f, -1.0f, 0.0f, 0.0f, 1.0f, 1.0f,	// top-left
+				-1.0f, -1.0f, -1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 1.0f, // bottom-left
+				-1.0f, -1.0f, -1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 1.0f, // bottom-left
+				-1.0f, -1.0f, 1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 0.0f,	// bottom-right
+				-1.0f, 1.0f, 1.0f, -1.0f, 0.0f, 0.0f, 1.0f, 0.0f,		// top-right
+				// right face
+				1.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f,		// top-left
+				1.0f, -1.0f, -1.0f, 1.0f, 0.0f, 0.0f, 0.0f, 1.0f, // bottom-right
+				1.0f, 1.0f, -1.0f, 1.0f, 0.0f, 0.0f, 1.0f, 1.0f,	// top-right
+				1.0f, -1.0f, -1.0f, 1.0f, 0.0f, 0.0f, 0.0f, 1.0f, // bottom-right
+				1.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f,		// top-left
+				1.0f, -1.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f,	// bottom-left
+				// bottom face
+				-1.0f, -1.0f, -1.0f, 0.0f, -1.0f, 0.0f, 0.0f, 1.0f, // top-right
+				1.0f, -1.0f, -1.0f, 0.0f, -1.0f, 0.0f, 1.0f, 1.0f,	// top-left
+				1.0f, -1.0f, 1.0f, 0.0f, -1.0f, 0.0f, 1.0f, 0.0f,		// bottom-left
+				1.0f, -1.0f, 1.0f, 0.0f, -1.0f, 0.0f, 1.0f, 0.0f,		// bottom-left
+				-1.0f, -1.0f, 1.0f, 0.0f, -1.0f, 0.0f, 0.0f, 0.0f,	// bottom-right
+				-1.0f, -1.0f, -1.0f, 0.0f, -1.0f, 0.0f, 0.0f, 1.0f, // top-right
+				// top face
+				-1.0f, 1.0f, -1.0f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f, // top-left
+				1.0f, 1.0f, 1.0f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f,		// bottom-right
+				1.0f, 1.0f, -1.0f, 0.0f, 1.0f, 0.0f, 1.0f, 1.0f,	// top-right
+				1.0f, 1.0f, 1.0f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f,		// bottom-right
+				-1.0f, 1.0f, -1.0f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f, // top-left
+				-1.0f, 1.0f, 1.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f		// bottom-left
+		};
+		glGenVertexArrays(1, &cubeVAO);
+		glGenBuffers(1, &cubeVBO);
+		// fill buffer
+		glBindBuffer(GL_ARRAY_BUFFER, cubeVBO);
+		glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+		// link vertex attributes
+		glBindVertexArray(cubeVAO);
+		glEnableVertexAttribArray(0);
+		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void *)0);
+		glEnableVertexAttribArray(1);
+		glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void *)(3 * sizeof(float)));
+		glEnableVertexAttribArray(2);
+		glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void *)(6 * sizeof(float)));
+		glBindBuffer(GL_ARRAY_BUFFER, 0);
+		glBindVertexArray(0);
+	}
+	// render Cube
+	glBindVertexArray(cubeVAO);
+	glDrawArrays(GL_TRIANGLES, 0, 36);
+	glBindVertexArray(0);
+}
+
+// renderQuad() renders a 1x1 XY quad in NDC
+// -----------------------------------------
+unsigned int quadVAO = 0;
+unsigned int quadVBO;
+void renderQuad()
+
+{
+	if (quadVAO == 0)
+	{
+		float quadVertices[] = {
+				// positions        // texture Coords
+				-1.0f,
+				1.0f,
+				0.0f,
+				0.0f,
+				1.0f,
+				-1.0f,
+				-1.0f,
+				0.0f,
+				0.0f,
+				0.0f,
+				1.0f,
+				1.0f,
+				0.0f,
+				1.0f,
+				1.0f,
+				1.0f,
+				-1.0f,
+				0.0f,
+				1.0f,
+				0.0f,
+		};
+		// setup plane VAO
+		glGenVertexArrays(1, &quadVAO);
+		glGenBuffers(1, &quadVBO);
+		glBindVertexArray(quadVAO);
+		glBindBuffer(GL_ARRAY_BUFFER, quadVBO);
+		glBufferData(GL_ARRAY_BUFFER, sizeof(quadVertices), &quadVertices, GL_STATIC_DRAW);
+		glEnableVertexAttribArray(0);
+		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void *)0);
+		glEnableVertexAttribArray(1);
+		glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void *)(3 * sizeof(float)));
+	}
+	glBindVertexArray(quadVAO);
+	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+	glBindVertexArray(0);
+}
+
 void scroll_callback(GLFWwindow *window, double xoffset, double yoffset)
 {
 	camera.ProcessMouseScroll(yoffset);
@@ -560,25 +480,71 @@ void mouse_callback(GLFWwindow *window, double xpos, double ypos)
 	camera.ProcessMouseMovement(xoffset, yoffset);
 }
 
-// ´°¿Ú´óĞ¡±ä»»¼àÌı
+// çª—å£å¤§å°å˜æ¢ç›‘å¬
 void framebuffer_size_callback(GLFWwindow *window, int width, int height)
 {
 	glViewport(0, 0, width, height);
 }
 
-// ÊäÈë¼àÌı
+// è¾“å…¥ç›‘å¬
 void processInput(GLFWwindow *window)
-
 {
-	float cameraSpeed = deltaTime * 2.5f;
-
+	// é€€å‡ºçª—å£
 	if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
 	{
 		glfwSetWindowShouldClose(window, true);
 	}
+
+	// ç›¸æœºç§»åŠ¨
+	if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
+	{
+		camera.ProcessKeyboard(FORWARD, deltaTime);
+	}
+	if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
+	{
+		camera.ProcessKeyboard(BACKWARD, deltaTime);
+	}
+	if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
+	{
+		camera.ProcessKeyboard(LEFT, deltaTime);
+	}
+	if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
+	{
+		camera.ProcessKeyboard(RIGHT, deltaTime);
+	}
+
+	// åˆ‡æ¢bloom
+	if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS && !bloomKeyPressed)
+	{
+		bloom = !bloom;
+		bloomKeyPressed = true;
+	}
+	if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_RELEASE)
+	{
+		bloomKeyPressed = false;
+	}
+
+	// æ›å…‰åº¦
+	if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS)
+	{
+		if (exposure > 0.0f)
+			exposure -= 0.001f;
+		else
+			exposure = 0.0f;
+	}
+	else if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS)
+	{
+		exposure += 0.001f;
+	}
+
+	// å°†é¼ æ ‡æŒ‡é’ˆä»çª—å£ä¸­æ–½æ”¾
+	if (glfwGetKey(window, GLFW_KEY_TAB) == GLFW_PRESS)
+	{
+		glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+	}
 }
 
-unsigned int loadTexture(char const *path)
+unsigned int loadTexture(char const *path, bool gammaCorrection)
 {
 	unsigned int textureID;
 	glGenTextures(1, &textureID);
@@ -588,16 +554,26 @@ unsigned int loadTexture(char const *path)
 	unsigned char *data = stbi_load(path, &width, &height, &nrComponents, 0);
 	if (data)
 	{
-		GLenum format;
+		GLenum internalFormat;
+		GLenum dataFormat;
+
 		if (nrComponents == 1)
-			format = GL_RED;
+		{
+			internalFormat = dataFormat = GL_RED;
+		}
 		else if (nrComponents == 3)
-			format = GL_RGB;
+		{
+			internalFormat = gammaCorrection ? GL_SRGB : GL_RGB;
+			dataFormat = GL_RGB;
+		}
 		else if (nrComponents == 4)
-			format = GL_RGBA;
+		{
+			internalFormat = gammaCorrection ? GL_SRGB_ALPHA : GL_RGBA;
+			dataFormat = GL_RGBA;
+		}
 
 		glBindTexture(GL_TEXTURE_2D, textureID);
-		glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, data);
+		glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, width, height, 0, dataFormat, GL_UNSIGNED_BYTE, data);
 		glGenerateMipmap(GL_TEXTURE_2D);
 
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
