@@ -1,6 +1,10 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 
+#include <iostream>
+#include <map>
+#include <random>
+
 #include <tool/shader.h>
 #include <tool/camera.h>
 #define STB_IMAGE_IMPLEMENTATION
@@ -13,10 +17,6 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
-
-#include <iostream>
-#include <map>
-#include <random>
 
 using namespace std;
 
@@ -210,9 +210,9 @@ int main()
 
   // 生成样本内核
   // ----------
-  std::uniform_int_distribution<GLfloat> randomFloats(0.0, 1.0); // 生成介于0.0到1.0之间的随机浮点数
-  std::default_random_engine generator;
-  std::vector<glm::vec3> ssaoKernel;
+  uniform_int_distribution<GLfloat> randomFloats(0.0, 1.0); // 生成介于0.0到1.0之间的随机浮点数
+  default_random_engine generator;
+  vector<glm::vec3> ssaoKernel;
   for (unsigned int i = 0; i < 64; i++)
   {
     glm::vec3 sample(randomFloats(generator) * 2.0 - 1.0, randomFloats(generator) * 2.0 - 1.0, randomFloats(generator));
