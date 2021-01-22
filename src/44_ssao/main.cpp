@@ -33,7 +33,7 @@ void renderCube();
 const unsigned int SCR_WIDTH = 800;
 const unsigned int SCR_HEIGHT = 600;
 
-Camera camera(glm::vec3(0.0f, 3.0f, 10.0f));
+Camera camera(glm::vec3(0.0f, 1.0f, 7.0f));
 
 float deltaTime = 0.0f; // 当前帧与上一帧之间的时间差
 float lastTime = 0.0f;  // 上一帧的时间
@@ -306,6 +306,8 @@ int main()
     shaderGeometryPass.setMat4("projection", projection);
     shaderGeometryPass.setMat4("view", view);
 
+    cout << camera.Position.x << "--" << camera.Position.y << "--" << camera.Position.z << endl;
+
     // room cube
     model = glm::mat4(1.0f);
     model = glm::translate(model, glm::vec3(0.0, 7.0f, 0.0f));
@@ -318,9 +320,9 @@ int main()
 
     // draw model
     model = glm::mat4(1.0f);
-    model = glm::translate(model, glm::vec3(0.0f, 0.5f, 0.0f));
+    model = glm::translate(model, glm::vec3(0.0f, -0.1f, 4.0f));
     model = glm::rotate(model, glm::radians(-90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
-    model = glm::scale(model, glm::vec3(1.0f));
+    model = glm::scale(model, glm::vec3(0.4f));
     shaderGeometryPass.setMat4("model", model);
     nanosuitModel.Draw(shaderGeometryPass);
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -328,6 +330,53 @@ int main()
     // 2. 生成SSAO 贴图
     // ---------------
     glBindFramebuffer(GL_FRAMEBUFFER, ssaoFBO);
+    glClear(GL_COLOR_BUFFER_BIT);
+    shaderSSAO.use();
+    // Send kernel + rotation
+    for (unsigned int i = 0; i < 64; ++i)
+      shaderSSAO.setVec3("samples[" + std::to_string(i) + "]", ssaoKernel[i]);
+    shaderSSAO.setMat4("projection", projection);
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, gPosition);
+    glActiveTexture(GL_TEXTURE1);
+    glBindTexture(GL_TEXTURE_2D, gNormal);
+    glActiveTexture(GL_TEXTURE2);
+    glBindTexture(GL_TEXTURE_2D, noiseTexture);
+    renderQuad();
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+    // 3. blur SSAO texture to remove noise
+    // ------------------------------------
+    glBindFramebuffer(GL_FRAMEBUFFER, ssaoBlurFBO);
+    glClear(GL_COLOR_BUFFER_BIT);
+    shaderSSAOBlur.use();
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, ssaoColorBuffer);
+    renderQuad();
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+    // 4. lighting pass: traditional deferred Blinn-Phong lighting with added screen-space ambient occlusion
+    // -----------------------------------------------------------------------------------------------------
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    shaderLightingPass.use();
+    // send light relevant uniforms
+    glm::vec3 lightPosView = glm::vec3(camera.GetViewMatrix() * glm::vec4(lightPos, 1.0));
+    shaderLightingPass.setVec3("light.Position", lightPosView);
+    shaderLightingPass.setVec3("light.Color", lightColor);
+    // Update attenuation parameters
+    const float linear = 0.09;
+    const float quadratic = 0.032;
+    shaderLightingPass.setFloat("light.Linear", linear);
+    shaderLightingPass.setFloat("light.Quadratic", quadratic);
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, gPosition);
+    glActiveTexture(GL_TEXTURE1);
+    glBindTexture(GL_TEXTURE_2D, gNormal);
+    glActiveTexture(GL_TEXTURE2);
+    glBindTexture(GL_TEXTURE_2D, gColorSpec);
+    glActiveTexture(GL_TEXTURE3); // add extra SSAO texture to lighting pass
+    glBindTexture(GL_TEXTURE_2D, ssaoColorBufferBler);
+    renderQuad();
 
     // ImGui
     // -----
