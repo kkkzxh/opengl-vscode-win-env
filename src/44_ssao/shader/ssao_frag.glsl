@@ -31,7 +31,7 @@ void main(){
 
   // 计算遮挡因子
   float occlusion = 0.0;
-  for(int i = 0; i < kernelSize; ++i {
+  for(int i = 0; i < kernelSize; ++i ){
     
     // 获取样本位置
     vec3 samplePos = TBN * samples[i]; // 切线 -> 观察 space
@@ -48,7 +48,7 @@ void main(){
 
     // 只有当深度值在取样半径内时才会影响遮挡因子
     float rangCheck = smoothstep(0.0, 1.0, radius / abs(fragPos.z - sampleDepth)); // 光滑插值第三个参数，在范围0.1到1.0之间
-    occlusion += (sampleDepth >= samplePos.z + bias ? 1.0:0.0) * rangCheck;
+    occlusion += (sampleDepth >= (samplePos.z + bias) ? 1.0 : 0.0) * rangCheck;
 
   }
   occlusion = 1.0 - (occlusion / kernelSize);

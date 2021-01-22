@@ -210,9 +210,9 @@ int main()
 
   // 生成样本内核
   // ----------
-  uniform_int_distribution<GLfloat> randomFloats(0.0, 1.0); // 生成介于0.0到1.0之间的随机浮点数
-  default_random_engine generator;
-  vector<glm::vec3> ssaoKernel;
+  std::uniform_real_distribution<float> randomFloats(0.0f, 1.0f); // 生成介于0.0到1.0之间的随机浮点数
+  std::default_random_engine generator;
+  std::vector<glm::vec3> ssaoKernel;
   for (unsigned int i = 0; i < 64; i++)
   {
     glm::vec3 sample(randomFloats(generator) * 2.0 - 1.0, randomFloats(generator) * 2.0 - 1.0, randomFloats(generator));
@@ -325,6 +325,10 @@ int main()
     nanosuitModel.Draw(shaderGeometryPass);
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
+    // 2. 生成SSAO 贴图
+    // ---------------
+    glBindFramebuffer(GL_FRAMEBUFFER, ssaoFBO);
+
     // ImGui
     // -----
     ImGui::Render();
@@ -340,6 +344,7 @@ int main()
 
   // 删除/释放资源
   glfwTerminate();
+
   return 0;
 }
 

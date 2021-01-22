@@ -30,7 +30,7 @@ void main(){
   // 计算光照
   vec3 ambient  = vec3(0.3 * Diffuse * AmbientOcclusion);
   vec3 lighting = ambient;
-  vec3 viewDir - normalize(-FragPos); // viewpos (0, 0, 0)
+  vec3 viewDir = normalize(-FragPos); // viewpos (0, 0, 0)
 
   // diffuse
   vec3 lightDir = normalize(light.Position - FragPos);
