@@ -1,7 +1,5 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
-#include <iostream>
-#include <map>
 
 #include <tool/shader.h>
 #include <tool/camera.h>
@@ -15,6 +13,10 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
+
+#include <iostream>
+#include <map>
+#include <random>
 
 using namespace std;
 
@@ -45,6 +47,12 @@ bool bloomKeyPressed = false;
 bool bloom = true;
 float exposure = 1.0;
 
+// 加速插值函数
+float lerp(float a, float b, float f)
+{
+  return a + f * (b - a);
+}
+
 /**
  * 用于测试光体积的示例
  */
@@ -52,6 +60,7 @@ int main()
 {
 
   // 初始化GLFW
+  // ---------
   glfwInit();
 
   // 配置GLFW
@@ -110,10 +119,10 @@ int main()
 
   // 编译shader
   // ----------
-  Shader shaderGeometry("./src/44_ssao/shader/deferred_geometry_vert.glsl", "./src/44_ssao/shader/deferred_geometry_frag.glsl");
-  Shader shaderRender("./src/44_ssao/shader/deferred_render_light_vert.glsl", "./src/44_ssao/shader/deferred_render_light_frag.glsl");
-  // 混合前向渲染和后向渲染结合
-  Shader shader("./src/44_ssao/shader/cube_vert.glsl", "./src/44_ssao/shader/cube_frag.glsl");
+  Shader shaderGeometryPass("./src/44_ssao/shader/ssao_geometry_vert.glsl", "./src/44_ssao/shader/ssao_geometry_frag.glsl");
+  Shader shaderLightingPass("./src/44_ssao/shader/ssao_vert.glsl", "./src/44_ssao/shader/ssao_lighting_frag.glsl");
+  Shader shaderSSAO("./src/44_ssao/shader/ssao_vert.glsl", "./src/44_ssao/shader/ssao_lighting_frag.glsl");
+  Shader shaderSSAOBlur("./src/44_ssao/shader/ssao_vert.glsl", "./src/44_ssao/shader/ssao_frag.glsl");
 
   // 加载贴图
   // --------
@@ -121,19 +130,9 @@ int main()
   // 加载模型
   // -------
   Model nanosuitModel("./static/model/nanosuit/nanosuit.obj");
-  vector<glm::vec3> modelPositions;
-  modelPositions.push_back(glm::vec3(-3.0, -0.5, -3.0));
-  modelPositions.push_back(glm::vec3(0.0, -0.5, -3.0));
-  modelPositions.push_back(glm::vec3(3.0, -0.5, -3.0));
-  modelPositions.push_back(glm::vec3(-3.0, -0.5, 0.0));
-  modelPositions.push_back(glm::vec3(0.0, -0.5, 0.0));
-  modelPositions.push_back(glm::vec3(3.0, -0.5, 0.0));
-  modelPositions.push_back(glm::vec3(-3.0, -0.5, 3.0));
-  modelPositions.push_back(glm::vec3(0.0, -0.5, 3.0));
-  modelPositions.push_back(glm::vec3(3.0, -0.5, 3.0));
 
   // 配置 G-Buffer 缓冲区
-  // ---------
+  // -------------------
   GLuint gBuffer;
   glGenFramebuffers(1, &gBuffer);
   glBindFramebuffer(GL_FRAMEBUFFER, gBuffer);
@@ -179,34 +178,93 @@ int main()
     cout << "Framebuffer 编译失败！" << endl;
   glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
+  // 创建帧缓冲区保存SSAO阶段的输出
+  // ---------------------------
+  unsigned int ssaoFBO, ssaoBlurFBO;
+  glGenFramebuffers(1, &ssaoFBO);
+  glGenFramebuffers(1, &ssaoBlurFBO);
+  glBindFramebuffer(GL_FRAMEBUFFER, ssaoFBO);
+  unsigned int ssaoColorBuffer, ssaoColorBufferBler;
+  // SSAO color buffer
+  glGenTextures(1, &ssaoColorBuffer);
+  glBindTexture(GL_TEXTURE_2D, ssaoColorBuffer);
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, SCR_WIDTH, SCR_HEIGHT, 0, GL_RED, GL_FLOAT, NULL);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+  glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, ssaoColorBuffer, 0);
+  if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+    cout << "SSAO Framebuffer 编译失败！" << endl;
+
+  // 模糊阶段的buffer
+  glBindFramebuffer(GL_FRAMEBUFFER, ssaoBlurFBO);
+  glGenTextures(1, &ssaoColorBufferBler);
+  glBindTexture(GL_TEXTURE_2D, ssaoColorBufferBler);
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, SCR_WIDTH, SCR_HEIGHT, 0, GL_RED, GL_FLOAT, NULL);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+  glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, ssaoColorBufferBler, 0);
+  if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+    cout << "SSAO Framebuffer 编译失败！" << endl;
+
+  glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+  // 生成样本内核
+  // ----------
+  std::uniform_int_distribution<GLfloat> randomFloats(0.0, 1.0); // 生成介于0.0到1.0之间的随机浮点数
+  std::default_random_engine generator;
+  std::vector<glm::vec3> ssaoKernel;
+  for (unsigned int i = 0; i < 64; i++)
+  {
+    glm::vec3 sample(randomFloats(generator) * 2.0 - 1.0, randomFloats(generator) * 2.0 - 1.0, randomFloats(generator));
+    sample = glm::normalize(sample);
+    sample *= randomFloats(generator);
+    float scale = float(i) / 64.0;
+
+    // 将核心样本靠近原点分布，使用加速插值函数
+    scale = lerp(0.1f, 1.0f, scale * scale);
+    sample *= scale;
+    ssaoKernel.push_back(sample);
+  }
+
+  // 生成噪声纹理
+  // -----------
+  std::vector<glm::vec3> ssaoNoise;
+  for (unsigned int i = 0; i < 16; i++)
+  {
+    // 在切线空间中，绕z轴旋转
+    glm::vec3 noise(randomFloats(generator) * 2.0 - 1.0, randomFloats(generator) * 2.0 - 1.0, 0.0f);
+    ssaoNoise.push_back(noise);
+  }
+  // 创建一个包含随机旋转向量的4*4纹理
+  unsigned int noiseTexture;
+  glGenTextures(1, &noiseTexture);
+  glBindTexture(GL_TEXTURE_2D, noiseTexture);
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, 4, 4, 0, GL_RGB, GL_FLOAT, &ssaoNoise[0]);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+
   // 灯光设置
   // -------
-  const unsigned int NR_LIGHTS = 32;
-  vector<glm::vec3> lightPositions;
-  vector<glm::vec3> lightColors;
-
-  srand(13);
-  for (unsigned int i = 0; i < NR_LIGHTS; i++)
-  {
-    // 计算随机偏移
-    float xPos = ((rand() % 100) / 100.0) * 6.0 - 3.0;
-    float yPos = ((rand() % 100) / 100.0) * 6.0 - 0.0;
-    float zPos = ((rand() % 100) / 100.0) * 6.0 - 3.0;
-    lightPositions.push_back(glm::vec3(xPos, yPos, zPos));
-
-    // 计算随机颜色
-    float rColor = ((rand() % 100) / 200.0) + 0.5;
-    float gColor = ((rand() % 100) / 200.0) + 0.5;
-    float bColor = ((rand() % 100) / 200.0) + 0.5;
-    lightColors.push_back(glm::vec3(rColor, gColor, bColor));
-  }
+  glm::vec3 lightPos = glm::vec3(2.0, 4.0, -2.0);
+  glm::vec3 lightColor = glm::vec3(0.2, 0.2, 0.7);
 
   // 设置shader
   // -----------------
-  shaderRender.use();
-  shaderRender.setInt("gPosition", 0);
-  shaderRender.setInt("gNormal", 1);
-  shaderRender.setInt("gColorSpec", 2);
+  shaderLightingPass.use();
+  shaderLightingPass.setInt("gPosition", 0);
+  shaderLightingPass.setInt("gNormal", 1);
+  shaderLightingPass.setInt("gAlbedo", 2);
+  shaderLightingPass.setInt("ssao", 3);
+
+  shaderSSAO.use();
+  shaderSSAO.setInt("gPosition", 0);
+  shaderSSAO.setInt("gNormal", 1);
+  shaderSSAO.setInt("texNoise", 2);
+
+  shaderSSAOBlur.use();
+  shaderSSAOBlur.setInt("ssapInput", 0);
 
   // 渲染循环
   // --------
@@ -243,81 +301,29 @@ int main()
     glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
     glm::mat4 view = camera.GetViewMatrix();
     glm::mat4 model = glm::mat4(1.0f);
-    shaderGeometry.use();
-    shaderGeometry.setMat4("projection", projection);
-    shaderGeometry.setMat4("view", view);
-    for (unsigned int i = 0; i < modelPositions.size(); i++)
-    {
-      model = glm::mat4(1.0f);
-      model = glm::translate(model, modelPositions[i]);
-      model = glm::scale(model, glm::vec3(0.25f));
-      shaderGeometry.setMat4("model", model);
-      nanosuitModel.Draw(shaderGeometry);
-    }
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
-    shader.use();
-    shader.setMat4("projection", projection);
-    shader.setMat4("view", view);
+    shaderGeometryPass.use();
+    shaderGeometryPass.setMat4("projection", projection);
+    shaderGeometryPass.setMat4("view", view);
+
+    // room cube
+    model = glm::mat4(1.0f);
+    model = glm::translate(model, glm::vec3(0.0, 7.0f, 0.0f));
+    model = glm::scale(model, glm::vec3(7.5f, 7.5f, 7.5f));
+
+    shaderGeometryPass.setMat4("model", model);
+    shaderGeometryPass.setInt("invertedNormals", 1); // 在立方体内反转法线
     renderCube();
-    // 2. Lighting pass 通过使用gbuffer的内容逐像素的遍历四分之一的屏幕来迭代计算照明
-    // -------------------------------------------------------------------------
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    shaderRender.use();
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, gPosition);
+    shaderGeometryPass.setInt("invertedNormals", 0);
 
-    glActiveTexture(GL_TEXTURE1);
-    glBindTexture(GL_TEXTURE_2D, gNormal);
-
-    glActiveTexture(GL_TEXTURE2);
-    glBindTexture(GL_TEXTURE_2D, gColorSpec);
-
-    for (unsigned int i = 0; i < lightPositions.size(); i++)
-    {
-      shaderRender.setVec3("lights[" + to_string(i) + "].Position", lightPositions[i]);
-      shaderRender.setVec3("lights[" + to_string(i) + "].Color", lightColors[i]);
-      const float constant = 1.0;
-      const float linear = 0.7;
-      const float quadratic = 1.8;
-
-      shaderRender.setFloat("lights[" + to_string(i) + "].Linear", linear);
-      shaderRender.setFloat("lights[" + to_string(i) + "].Quadratic", quadratic);
-
-      // 计算光源照射半径
-      const float maxBrightness = std::fmaxf(std::fmaxf(lightColors[i].r, lightColors[i].g), lightColors[i].b);
-      float radius = (-linear + std::sqrt(linear * linear - 4 * quadratic * (constant - (256.0f / 5.0f) * maxBrightness))) / (2.0f * quadratic);
-      shaderRender.setFloat("lights[" + std::to_string(i) + "].Radius", radius);
-    }
-    shaderRender.setVec3("viewPos", camera.Position);
-
-    renderQuad();
-
-    // 3. 将几何图形的深度缓冲区的内容复制到默认帧缓冲区的深度缓冲区中
-    // ---------------------------------------------------------
-    glBindFramebuffer(GL_READ_FRAMEBUFFER, gBuffer);
-    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
-    // 写入默认的帧缓冲缓冲区
-    glBlitFramebuffer(0, 0, SCR_WIDTH, SCR_HEIGHT, 0, 0, SCR_WIDTH, SCR_HEIGHT, GL_DEPTH_BUFFER_BIT, GL_NEAREST);
+    // draw model
+    model = glm::mat4(1.0f);
+    model = glm::translate(model, glm::vec3(0.0f, 0.5f, 0.0f));
+    model = glm::rotate(model, glm::radians(-90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
+    model = glm::scale(model, glm::vec3(1.0f));
+    shaderGeometryPass.setMat4("model", model);
+    nanosuitModel.Draw(shaderGeometryPass);
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
-
-    // 4. 正向渲染立方体
-    // ---------------
-    shader.use();
-    shader.setMat4("projection", projection);
-    shader.setMat4("view", view);
-
-    for (unsigned int i = 0; i < lightPositions.size(); i++)
-    {
-      model = glm::mat4(1.0);
-      model = glm::translate(model, lightPositions[i]);
-      model = glm::scale(model, glm::vec3(0.11));
-      shader.setVec3("lightColor", lightColors[i]);
-      shader.setMat4("model", model);
-      renderCube();
-    }
-
-    //cout << "bloom: " << (bloom ? "on" : "off") << " | exposure: " << exposure << endl;
 
     // ImGui
     // -----
